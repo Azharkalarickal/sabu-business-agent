@@ -195,19 +195,23 @@ Keep it 1-2 sentences. Output ONLY your message.
       const prompt = `
 Active Business Mission: "${this.activeMission.mission_title}"
 Initial Directive: "${this.activeMission.instruction}"
-Existing Feasibility Notes:
-${this.activeMission.feasibility_report || '(None yet)'}
+Existing Feasibility Report:
+${this.activeMission.feasibility_report || '(No notes yet)'}
 
-New information received from ${sender.display_name || sender.username} (${sender.profession || 'Specialist'}):
+New Information received from ${sender.display_name || sender.username} (${sender.profession || 'Specialist'}):
 "${messageContent}"
 
 Your Task:
-Synthesize and update the Business Feasibility & Research Summary in Malayalam.
-Include:
-- Key requirements and steps discovered so far
-- Cost/budget or legal pointers mentioned
-- Current readiness assessment
-Keep it clear and structured with bullet points.
+Synthesize and update the structured "A to Z Business Blueprint" in Malayalam.
+Keep it clearly organized under these 6 Pillars with bullet points:
+1. 📋 ഉൽപ്പന്നവും സജ്ജീകരണങ്ങളും (Product & Setup)
+2. ⚖️ സർക്കാർ ലൈസൻസുകൾ (Legal, FSSAI, GST & Permits)
+3. 💰 ബഡ്ജറ്റും ലാഭക്കണക്കുകളും (Capital, Operating Cost & Margins)
+4. 📦 റോ മെറ്റീരിയൽ സപ്ലൈ ചെയിൻ (Raw Materials & Storage)
+5. 📢 മാർക്കറ്റിംഗും ആദ്യ കസ്റ്റമേഴ്സും (Marketing, Branding & Acquisition)
+6. ⚠️ വെല്ലുവിളികളും പരിഹാരങ്ങളും (Risks & Precautions)
+
+Update the sections with the new details gathered. Keep it clean and readable in Malayalam.
 `;
       const updatedReport = await brain.callLLM(prompt);
       this.activeMission.feasibility_report = updatedReport;

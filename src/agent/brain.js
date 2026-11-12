@@ -130,31 +130,40 @@ If NO business or professional lesson was shared, respond: {"has_lesson": false}
   }
 
   /**
-   * Plans a business mission given a user instruction
+   * Plans an A-to-Z business research mission covering all 6 essential pillars
    */
   async planBusinessMission(instruction) {
     try {
       const prompt = `
-You are an expert startup advisor and business strategist assisting Sabu, a young entrepreneur.
-The user gave this instruction / business goal:
+You are an expert startup advisor assisting Sabu in conducting an A-to-Z business feasibility study.
+Business Directive from User:
 "${instruction}"
 
 Your Task:
-1. Provide a short, catchy Malayalam / English Mission Title.
-2. Identify 3 to 4 distinct key professional roles / specialists that Sabu must consult to study and start this business (e.g. "Software Architect", "Digital Marketer", "Legal Consultant", "Bakery Chef", "Supply Chain Manager").
-3. For each role, provide 1 specific question Sabu should ask them.
+1. Provide a short, catchy Title for this business venture.
+2. Structure the research into the 5-6 core specialist roles needed for a complete A to Z study:
+   - Pillar 1: Domain/Product Specialist (Feasibility & Setup)
+   - Pillar 2: Legal Consultant / Lawyer (Licensing, FSSAI, GST, Permits)
+   - Pillar 3: Accountant / Financial Planner (Initial Capital, Operational Costs, Margins, Break-even)
+   - Pillar 4: Supply Chain / Vendor Specialist (Raw materials, storage, sourcing)
+   - Pillar 5: Marketing & Branding Specialist (First 100 customers, ads, branding)
+   - Pillar 6: Startup Mentor (Common mistakes & risk avoidance)
+3. For each role, provide the single most important practical question Sabu should ask them in Malayalam.
 
 Respond in strict JSON format:
 {
   "mission_title": "...",
   "target_professions": [
-    { "profession": "...", "question": "..." },
-    { "profession": "...", "question": "..." },
-    { "profession": "...", "question": "..." }
+    { "profession": "...", "pillar": "Product & Setup", "question": "..." },
+    { "profession": "Legal Consultant", "pillar": "Legal & Licensing", "question": "..." },
+    { "profession": "Accountant", "pillar": "Finance & Margins", "question": "..." },
+    { "profession": "Supply Chain Specialist", "pillar": "Raw Materials & Logistics", "question": "..." },
+    { "profession": "Marketing Expert", "pillar": "Marketing & Customers", "question": "..." },
+    { "profession": "Startup Mentor", "pillar": "Risks & Pitfalls", "question": "..." }
   ]
 }
 `;
-      const result = await this.callLLM(prompt, 'You are a business research planner. Output strict JSON only.');
+      const result = await this.callLLM(prompt, 'You are a professional business research planner. Output strict JSON only.');
       const cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       if (parsed.mission_title && Array.isArray(parsed.target_professions)) {
@@ -166,9 +175,12 @@ Respond in strict JSON format:
     return {
       mission_title: instruction.slice(0, 50),
       target_professions: [
-        { profession: 'Business Consultant', question: 'ഈ ബിസിനസ്സ് തുടങ്ങുമ്പോൾ ഏറ്റവും കൂടുതൽ ശ്രദ്ധിക്കേണ്ട കാര്യങ്ങൾ എന്തൊക്കെയാണ്?' },
-        { profession: 'Marketing Specialist', question: 'ഇതിലേക്ക് കസ്റ്റമേഴ്സിനെ ആകർഷിക്കാൻ ഏറ്റവും അനുയോജ്യമായ മാർക്കറ്റിംഗ് സ്ട്രാറ്റജി എന്താണ്?' },
-        { profession: 'Financial Advisor', question: 'തുടക്കത്തിൽ വേണ്ടിവരുന്ന ഏകദേശ ബഡ്ജറ്റും ചിലവുകളും എങ്ങനെ കണക്കാക്കാം?' }
+        { profession: 'Business Consultant', pillar: 'Product & Setup', question: 'ഈ ബിസിനസ്സ് ആരംഭിക്കാൻ എന്തൊക്കെ പ്രധാന സജ്ജീകരണങ്ങളും മെഷിനറികളുമാണ് വേണ്ടത്?' },
+        { profession: 'Legal Consultant', pillar: 'Legal & Licensing', question: 'കേരളത്തിൽ തുടങ്ങാൻ വേണ്ട പ്രധാന ലൈസൻസുകൾ (FSSAI, GST, ട്രേഡ് പെർമിറ്റ്) എന്തൊക്കെയാണ്, എത്ര ചിലവ് വരും?' },
+        { profession: 'Accountant', pillar: 'Finance & Margins', question: 'തുടക്കത്തിൽ വേണ്ട മിനിമം ക്യാപിറ്റലും മാസാമാസ ചിലവുകളും ലാഭവിഹിതവും (Profit Margin) എത്രയാണ്?' },
+        { profession: 'Supply Chain Specialist', pillar: 'Raw Materials & Logistics', question: 'ക്വാളിറ്റിയുള്ള റോ മെറ്റീരിയൽസ് ഏറ്റവും കുറഞ്ഞ ചിലവിൽ എവിടെ നിന്ന് ഹോൾസെയിലായി കണ്ടെത്താം?' },
+        { profession: 'Marketing Expert', pillar: 'Marketing & Customers', question: 'ആദ്യത്തെ 100 കസ്റ്റമേഴ്സിനെ ആകർഷിക്കാൻ ഏറ്റവും അനുയോജ്യമായ മാർക്കറ്റിംഗ് സ്ട്രാറ്റജി എന്താണ്?' },
+        { profession: 'Startup Mentor', pillar: 'Risks & Pitfalls', question: 'തുടക്കക്കാർക്ക് പറ്റുന്ന പ്രധാന അബദ്ധങ്ങൾ എന്തൊക്കെയാണ്, നഷ്ടം വരാതിരിക്കാൻ എന്ത് ശ്രദ്ധിക്കണം?' }
       ]
     };
   }
@@ -226,13 +238,16 @@ If NO, output JSON: {"should_summon": false}
             model,
             messages,
             temperature: 0.6,
-            max_tokens: 350
+            max_tokens: 600
           })
         });
 
         const data = await res.json();
-        if (res.ok && data.choices?.[0]?.message?.content) {
-          let content = data.choices[0].message.content;
+        if (res.ok && data.choices?.[0]?.message) {
+          let content = data.choices[0].message.content || '';
+          if (!content && data.choices[0].message.reasoning) {
+            content = data.choices[0].message.reasoning;
+          }
           content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
           if (content) return content;
         } else {
