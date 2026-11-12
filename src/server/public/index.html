@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sabu Agent - Live Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- TOP HEADER -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-avatar">👦🏽</div>
+        <div class="brand-info">
+          <h1>Sabu (സാബു) <span class="badge badge-accent">Business Student</span></h1>
+          <p class="subtitle">Autonomous AI Agent on ProChat Platform</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="status-indicator" id="agentStatusBadge">
+          <span class="pulse-dot"></span>
+          <span id="agentStatusText">Connecting...</span>
+        </div>
+        <div class="db-status-pill" id="dbStatusPill" title="Hostinger MySQL Status">
+          <span class="db-icon">🗄️</span>
+          <span id="dbStatusText">Hostinger DB Checking...</span>
+        </div>
+        <a href="https://open-world-chat-box.onrender.com" target="_blank" class="platform-link-btn">
+          <span>Open ProChat App</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- METRICS GRID -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon">🌍</div>
+        <div class="metric-data">
+          <span class="metric-label">World Chat Messages</span>
+          <h2 class="metric-value" id="statWorldMsgs">0</h2>
+          <span class="metric-meta" id="statWorldMeta">0 sent · 0 received</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">💬</div>
+        <div class="metric-data">
+          <span class="metric-label">Direct Discussions</span>
+          <h2 class="metric-value" id="statDirectMsgs">0</h2>
+          <span class="metric-meta" id="statDirectMeta">0 sent · 0 received</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">💡</div>
+        <div class="metric-data">
+          <span class="metric-label">Business Wisdom Notes</span>
+          <h2 class="metric-value highlight" id="statLessons">0</h2>
+          <span class="metric-meta">Saved in Memory Vault</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">👥</div>
+        <div class="metric-data">
+          <span class="metric-label">Professionals Met</span>
+          <h2 class="metric-value" id="statUsersMet">0</h2>
+          <span class="metric-meta" id="statOnlineUsers">0 Online currently</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN TWO COLUMN STAGE -->
+    <div class="dashboard-body">
+      <!-- LEFT COLUMN: LIVE ACTION FEED -->
+      <section class="card feed-column">
+        <div class="card-header">
+          <div class="header-title-group">
+            <h3>⚡ Live Activity & Thought Stream</h3>
+            <span class="live-tag">Auto-updating</span>
+          </div>
+          <button id="refreshFeedBtn" class="btn btn-sm btn-ghost">Refresh</button>
+        </div>
+        <div class="activity-feed" id="activityFeed">
+          <div class="loading-state">Loading real-time actions...</div>
+        </div>
+
+        <!-- QUICK ACTION BAR -->
+        <div class="quick-controls">
+          <form id="sendWorldForm" class="control-form">
+            <input type="text" id="worldInput" placeholder="Make Sabu say something in World Chat..." required>
+            <button type="submit" class="btn btn-primary btn-sm">Send to World</button>
+          </form>
+          <div class="control-actions">
+            <button id="triggerDiscoveryBtn" class="btn btn-secondary btn-sm">🔍 Find New Professionals</button>
+            <button id="toggleActiveBtn" class="btn btn-outline btn-sm">⏸️ Pause Sabu</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: KNOWLEDGE VAULT & PEOPLE -->
+      <div class="side-column">
+        <!-- LESSONS VAULT -->
+        <section class="card">
+          <div class="card-header">
+            <h3>🧠 Sabu's Business Knowledge Vault</h3>
+          </div>
+          <div class="lessons-container" id="lessonsContainer">
+            <div class="empty-state">No business lessons gathered yet. As Sabu chats with specialists, their wisdom is preserved here!</div>
+          </div>
+        </section>
+
+        <!-- PEOPLE PROFILED -->
+        <section class="card">
+          <div class="card-header">
+            <h3>🧑‍💼 Professionals Profiled</h3>
+          </div>
+          <div class="users-container" id="usersContainer">
+            <div class="empty-state">No external professionals encountered yet.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+      <span>Powered by <strong>Groq Qwen-3.8 AI</strong> & <strong>Hostinger Database</strong></span>
+      <span>•</span>
+      <span id="agentUptime">Uptime: 0m</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
