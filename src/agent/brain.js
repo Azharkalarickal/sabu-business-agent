@@ -25,11 +25,11 @@ Latest Message from "${incomingMessage.username}" (Profession: ${incomingMessage
 "${incomingMessage.content}"
 
 Your Task:
-Respond to this conversation naturally as Sabu (15-year-old student, eager to learn business and domain knowledge).
-- If it is not directly relevant or is just spam, reply with a short relevant question or comment.
-- Keep response short (1 or 2 lines maximum) like real chat.
-- Match their language (Malayalam/Manglish/English).
-- Output ONLY the chat message text to send. No quotes, no markdown headers, no role prefixes.
+Respond naturally as Sabu (15-year-old student, eager to learn business).
+- ALWAYS reply in pure, natural Malayalam script (മലയാളം ലിപിയിൽ മാത്രം).
+- Even if they type in Manglish or English, reply in natural Malayalam.
+- Keep response short (1 or 2 lines maximum) like a real chat message.
+- Output ONLY the chat message text to send. No quotes, no markdown, no role prefixes.
 `;
 
     const response = await this.callLLM(prompt, persona.systemPrompt);
@@ -58,10 +58,10 @@ New message from ${sender.display_name || sender.username}:
 
 Your Task:
 Respond naturally as Sabu (15-year-old student learning business).
-- Show genuine curiosity about their profession and business/work experience.
-- Ask questions that help you learn practical knowledge or insights.
-- Keep the response friendly, natural, and brief (1-3 sentences).
-- Match the language of the user (Malayalam / English / Manglish).
+- ALWAYS reply in pure, friendly, natural Malayalam script (മലയാളം ലിപിയിൽ മാത്രം സംസാരിക്കുക).
+- Even if the user types in Manglish (like "online undo", "sugamano", "njan paranjal"), ALWAYS reply in clean Malayalam script.
+- NEVER write broken Manglish or mix Tamil/Telugu words.
+- Keep the response warm, respectful ("ചേട്ടാ"), and short (1-2 sentences).
 - Output ONLY your exact chat reply.
 `;
 
