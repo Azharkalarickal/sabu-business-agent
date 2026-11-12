@@ -183,7 +183,7 @@ class AutoBehaviorManager {
     );
 
     // Notify mission manager of incoming specialist DM
-    await missionManager.handleSpecialistDmReply(
+    const missionEvent = await missionManager.handleSpecialistDmReply(
       {
         id: msg.sender_id,
         username: msg.sender_username,
@@ -205,19 +205,24 @@ class AutoBehaviorManager {
       const history = await client.getDirectMessages(msg.sender_id);
       const activeMission = missionManager.getActiveMission();
 
-      const reply = await brain.generateDirectMessageResponse(
-        {
-          id: msg.sender_id,
-          username: msg.sender_username,
-          display_name: msg.sender_display_name,
-          profession: msg.sender_profession,
-          skills: msg.sender_skills,
-          bio: msg.sender_bio
-        },
-        msg.content,
-        history.slice(-8),
-        activeMission
-      );
+      let reply;
+      if (missionEvent && missionEvent.isDirectFind) {
+        reply = `തീർച്ചയായും ചേട്ടാ! ഞാൻ ഇപ്പോൾ തന്നെ വേൾഡ് ചാറ്റിൽ പോയി ഒരു ${missionEvent.profession}-നെ (@find ${missionEvent.profession}) വിളിച്ച് കാര്യങ്ങൾ വിശദമായി ചോദിച്ചു പഠിക്കാം!`;
+      } else {
+        reply = await brain.generateDirectMessageResponse(
+          {
+            id: msg.sender_id,
+            username: msg.sender_username,
+            display_name: msg.sender_display_name,
+            profession: msg.sender_profession,
+            skills: msg.sender_skills,
+            bio: msg.sender_bio
+          },
+          msg.content,
+          history.slice(-8),
+          activeMission
+        );
+      }
 
       // Deduplication: never send identical repeat message
       if (reply && this.lastSentMessage[msg.sender_id] === reply) {

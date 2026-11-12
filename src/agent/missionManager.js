@@ -7,6 +7,8 @@ class BusinessMissionManager {
     this.activeMission = null;
     this.isProcessing = false;
     this.lastSummonTime = 0;
+    this.consultedSpecialistIds = new Set();
+    this.pendingDirectQuestion = null;
   }
 
   async init() {
@@ -14,6 +16,11 @@ class BusinessMissionManager {
       this.activeMission = await db.getActiveMission();
       if (this.activeMission) {
         console.log(`🎯 [Mission] Resumed active mission: "${this.activeMission.mission_title}"`);
+        if (Array.isArray(this.activeMission.consulted_specialists)) {
+          this.activeMission.consulted_specialists.forEach(s => {
+            if (s && s.id) this.consultedSpecialistIds.add(s.id);
+          });
+        }
       }
     } catch (e) {
       console.warn('Mission init warning:', e.message);
@@ -82,13 +89,14 @@ class BusinessMissionManager {
    * Called when a specialist responds to @find in World Chat
    */
   async handleSpecialistArrival(msg) {
-    if (!this.activeMission || this.activeMission.status !== 'IN_PROGRESS') return;
+    if (!this.activeMission && !this.pendingDirectQuestion) return;
+    if (this.activeMission && this.activeMission.status !== 'IN_PROGRESS' && !this.pendingDirectQuestion) return;
 
     // Detect if message is greeting Sabu from a newly created specialist
     // Example: "@Sabu നമസ്കാരം! ഞാൻ ... ആണ് (...) എന്റെ സഹായം വേണമെങ്കിൽ എനിക്ക് Personal Message അയച്ചാൽ മതി..."
     const content = msg.content || '';
-    const isSpecialistGreeting = (content.includes('@Sabu') || content.includes('@sabu')) &&
-                                 (content.includes('നമസ്കാരം') || content.includes('സഹായം') || content.includes('Personal Message'));
+    const isSpecialistGreeting = (content.toLowerCase().includes('@sabu')) &&
+                                 (content.includes('നമസ്കാരം') || content.includes('സഹായം') || content.includes('Personal Message') || content.includes('സഹായിക്കാം'));
 
     if (!isSpecialistGreeting) return;
 
@@ -97,10 +105,11 @@ class BusinessMissionManager {
     const profession = msg.profession || 'Specialist';
 
     // Prevent duplicate contact if already consulted or reached out
-    const consulted = this.activeMission.consulted_specialists || [];
-    if (consulted.some(s => s.id === specialistId)) {
+    if (!this.consultedSpecialistIds) this.consultedSpecialistIds = new Set();
+    if (this.consultedSpecialistIds.has(specialistId)) {
       return;
     }
+    this.consultedSpecialistIds.add(specialistId);
 
     console.log(`🤝 [Mission] Specialist "${specialistName}" (${profession}) arrived in World Chat for Sabu!`);
     await db.logActivity('MISSION', `Specialist arrived: ${specialistName} (${profession})`, `Opening 1-on-1 personal chat to study business requirements.`);
@@ -108,9 +117,24 @@ class BusinessMissionManager {
     // Wait 3 seconds for natural feel, then reach out via Personal DM!
     setTimeout(async () => {
       try {
-        const questionPrompt = `
-You are Sabu, a 15-year-old 10th student planning a business: "${this.activeMission.mission_title}".
-Instruction: "${this.activeMission.instruction}"
+        let questionPrompt;
+        if (this.pendingDirectQuestion && profession.toLowerCase().includes(this.pendingDirectQuestion.profession.toLowerCase())) {
+          questionPrompt = `
+You are Sabu, a 15-year-old 10th student from Kerala.
+A user gave you this specific instruction:
+"${this.pendingDirectQuestion.context}"
+
+Specialist arrived: ${specialistName} (${profession})
+
+Write a polite, warm opening Direct Message in pure Malayalam script.
+Introduce yourself as Sabu (10th standard student), state that you want to learn about "${this.pendingDirectQuestion.context}", and ask 1 practical question to start learning.
+Keep it 1-2 sentences. Output ONLY your Malayalam message.
+`;
+          this.pendingDirectQuestion = null;
+        } else {
+          questionPrompt = `
+You are Sabu, a 15-year-old 10th student planning a business: "${this.activeMission ? this.activeMission.mission_title : 'ഒരു പുതിയ സംരംഭം'}".
+Instruction: "${this.activeMission ? this.activeMission.instruction : 'വിവരങ്ങൾ പഠിക്കുക'}"
 Specialist: ${specialistName}
 Profession: ${profession}
 
@@ -118,6 +142,7 @@ Write a polite, warm, humble opening Direct Message (in pure Malayalam script).
 Introduce yourself as Sabu, mention the business you are researching, and ask 1 direct, practical question about their domain (costs, requirements, pitfalls).
 Keep it 1-2 sentences. Output ONLY your message.
 `;
+        }
         const openingDm = await brain.callLLM(questionPrompt);
 
         client.sendDirectMessage(specialistId, openingDm);
@@ -133,17 +158,19 @@ Keep it 1-2 sentences. Output ONLY your message.
 
         await db.logActivity('DIRECT_CHAT', `Sabu opened DM with specialist ${specialistName} (${profession})`, openingDm);
 
-        // Record specialist in mission
-        const consulted = this.activeMission.consulted_specialists || [];
-        if (!consulted.some(s => s.id === specialistId)) {
-          consulted.push({
-            id: specialistId,
-            name: specialistName,
-            profession,
-            started_at: new Date()
-          });
-          this.activeMission.consulted_specialists = consulted;
-          await db.updateMission(this.activeMission.id, { consulted_specialists: consulted });
+        // Record specialist in mission if active
+        if (this.activeMission) {
+          const consulted = this.activeMission.consulted_specialists || [];
+          if (!consulted.some(s => s.id === specialistId)) {
+            consulted.push({
+              id: specialistId,
+              name: specialistName,
+              profession,
+              started_at: new Date()
+            });
+            this.activeMission.consulted_specialists = consulted;
+            await db.updateMission(this.activeMission.id, { consulted_specialists: consulted });
+          }
         }
       } catch (err) {
         console.error('Error opening DM with specialist:', err.message);
@@ -151,11 +178,72 @@ Keep it 1-2 sentences. Output ONLY your message.
     }, 3500);
   }
 
+  extractDirectFindCommand(text) {
+    if (!text) return null;
+    const patterns = [
+      /(?:sabu\s+)?(?:nee\s+)?(?:\boru\b\s+|ഒരു\s+)?([a-zA-Z\s\u0d00-\u0d7f]+?)(?:e|ne|നെ|റെ|യെ)?\s+(?:anneshikku|anneshiku|kandupidikku|kandupidiku|kandethu|find\s*cheyyu|nokku|അന്വേഷിക്ക്|കണ്ടുപിടിക്ക്|കണ്ടെത്ത്|നോക്ക്)/i,
+      /(?:\bfind\b|\bsearch\b)\s+(?:\b(?:a|an|oru)\b\s+)?([a-zA-Z\s]+)/i,
+      /@find\s+([a-zA-Z\s\u0d00-\u0d7f]+)/i
+    ];
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m && m[1]) {
+        let prof = m[1].trim().replace(/(?:e|ne|നെ|റെ|യെ)$/i, '').trim();
+        prof = prof.replace(/^(?:sabu|nee|oru|ഒരു)\s+/i, '').trim();
+        if (prof.length >= 3 && !['ith', 'ath', 'njan', 'nee', 'poyi'].includes(prof.toLowerCase())) {
+          return prof.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+      }
+    }
+    return null;
+  }
+
   /**
    * Called when specialist replies in DM to extract lessons and check for connected referrals
    */
   async handleSpecialistDmReply(sender, messageContent) {
-    if (!this.activeMission || this.activeMission.status !== 'IN_PROGRESS') return;
+    // 1. Check for direct command to find someone (e.g. "Nee oru farmere anneshikku...")
+    const directProfession = this.extractDirectFindCommand(messageContent);
+    if (directProfession) {
+      console.log(`🎯 [Mission] Direct find command detected in DM from ${sender.display_name}: "${directProfession}"`);
+      await db.logActivity('MISSION', `User instructed Sabu to find: ${directProfession}`, messageContent);
+
+      this.pendingDirectQuestion = {
+        profession: directProfession,
+        context: messageContent,
+        instructed_by: sender.display_name || sender.username
+      };
+
+      // Add to active mission if one exists
+      if (this.activeMission) {
+        const targets = this.activeMission.target_professions || [];
+        targets.unshift({
+          profession: directProfession,
+          question: messageContent,
+          referred_by: sender.display_name || sender.username
+        });
+        this.activeMission.target_professions = targets;
+        await db.updateMission(this.activeMission.id, { target_professions: targets });
+      }
+
+      // Immediately summon the specialist in World Chat after 3 seconds
+      setTimeout(() => {
+        console.log(`📢 [Mission] Executing user command in World Chat: "@find ${directProfession}"`);
+        const summonMsg = `@find ${directProfession}`;
+        client.sendWorldMessage(summonMsg);
+        db.saveMessage({
+          chat_type: 'world',
+          sender_id: client.currentUser ? client.currentUser.id : 6,
+          sender_username: 'sabu123',
+          content: summonMsg
+        });
+        db.logActivity('WORLD_CHAT', `Sabu summoned ${directProfession} in World Chat`, `As instructed by ${sender.display_name}`);
+      }, 3000);
+
+      return { isDirectFind: true, profession: directProfession };
+    }
+
+    if (!this.activeMission || this.activeMission.status !== 'IN_PROGRESS') return null;
 
     // Check if the specialist recommended another profession or domain
     const referral = await brain.identifyNextSpecialist(messageContent);
@@ -178,15 +266,16 @@ Keep it 1-2 sentences. Output ONLY your message.
         await db.updateMission(this.activeMission.id, { target_professions: targets });
         await db.logActivity('MISSION', `Connected Next Requirement: ${referral.profession}`, `Referred by ${sender.display_name}: ${referral.reason}`);
 
-        // Summon the referred profession after 15 seconds
+        // Summon the referred profession after 10 seconds
         setTimeout(() => {
           this.summonNextProfession();
-        }, 15000);
+        }, 10000);
       }
     }
 
     // Update feasibility report
     this.updateFeasibilitySummary(sender, messageContent);
+    return null;
   }
 
   async updateFeasibilitySummary(sender, messageContent) {
