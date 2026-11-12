@@ -9,6 +9,8 @@ class AutoBehaviorManager {
     this.worldChatCooldown = 0;
     this.worldChatCooldownMs = 12000; // 12s cooldown between public world chat replies
     this.searchInterval = null;
+    this.processingDMs = new Set();
+    this.lastSentMessage = {};
     this.stats = {
       worldMessagesReceived: 0,
       worldMessagesSent: 0,
@@ -137,11 +139,18 @@ class AutoBehaviorManager {
 
   async handleDirectMessage(msg) {
     if (!this.isActive || !msg) return;
-    const myId = client.currentUser ? client.currentUser.id : 1;
+    const myId = client.currentUser ? client.currentUser.id : 6;
     const senderId = msg.sender_id || msg.user_id;
 
     // Ignore own messages
     if (senderId === myId || msg.sender_username === 'sabu123' || msg.username === 'sabu123') return;
+
+    // Prevent duplicate concurrent handling for the same person
+    if (this.processingDMs.has(senderId)) {
+      console.log(`[DM] Already handling a reply for user ${senderId}. Skipping duplicate trigger.`);
+      return;
+    }
+    this.processingDMs.add(senderId);
 
     this.stats.directMessagesReceived++;
     console.log(`[DM] From ${msg.sender_username || msg.sender_id}: ${msg.content}`);
@@ -186,13 +195,16 @@ class AutoBehaviorManager {
 
     await db.logActivity('DIRECT_CHAT', `Received DM from ${msg.sender_username || msg.sender_id}`, msg.content);
 
-    // Simulate natural thinking and typing delay (1.5 - 3.5 seconds)
-    const typingDelay = 1500 + Math.floor(Math.random() * 2000);
-    await this.sleep(typingDelay);
-
     try {
+      // Natural human reading & typing delay (5 to 8 seconds) so messages aren't robotic or spammed
+      const typingDelay = 5000 + Math.floor(Math.random() * 3000);
+      console.log(`[DM] Reading & carefully preparing reply to ${msg.sender_username}... (waiting ${typingDelay}ms)`);
+      await this.sleep(typingDelay);
+
       // Fetch conversation history
       const history = await client.getDirectMessages(msg.sender_id);
+      const activeMission = missionManager.getActiveMission();
+
       const reply = await brain.generateDirectMessageResponse(
         {
           id: msg.sender_id,
@@ -203,10 +215,18 @@ class AutoBehaviorManager {
           bio: msg.sender_bio
         },
         msg.content,
-        history.slice(-8)
+        history.slice(-8),
+        activeMission
       );
 
+      // Deduplication: never send identical repeat message
+      if (reply && this.lastSentMessage[msg.sender_id] === reply) {
+        console.log(`[DM] Skipping duplicate repeated message to ${msg.sender_id}`);
+        return;
+      }
+
       if (reply) {
+        this.lastSentMessage[msg.sender_id] = reply;
         client.sendDirectMessage(msg.sender_id, reply);
         this.stats.directMessagesSent++;
         console.log(`[DM Reply] Sabu -> ${msg.sender_username || msg.sender_id}: ${reply}`);
@@ -223,6 +243,8 @@ class AutoBehaviorManager {
       }
     } catch (err) {
       console.error('Error generating direct message reply:', err.message);
+    } finally {
+      this.processingDMs.delete(senderId);
     }
   }
 

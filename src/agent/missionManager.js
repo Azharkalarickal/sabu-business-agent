@@ -96,6 +96,12 @@ class BusinessMissionManager {
     const specialistName = msg.display_name || msg.username;
     const profession = msg.profession || 'Specialist';
 
+    // Prevent duplicate contact if already consulted or reached out
+    const consulted = this.activeMission.consulted_specialists || [];
+    if (consulted.some(s => s.id === specialistId)) {
+      return;
+    }
+
     console.log(`🤝 [Mission] Specialist "${specialistName}" (${profession}) arrived in World Chat for Sabu!`);
     await db.logActivity('MISSION', `Specialist arrived: ${specialistName} (${profession})`, `Opening 1-on-1 personal chat to study business requirements.`);
 
@@ -223,3 +229,4 @@ Keep it clear and structured with bullet points.
 }
 
 module.exports = new BusinessMissionManager();
+

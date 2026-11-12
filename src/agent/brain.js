@@ -39,30 +39,42 @@ Respond naturally as Sabu (15-year-old student, eager to learn business).
   /**
    * Generates a response for a Direct Message (1-on-1 personal chat)
    */
-  async generateDirectMessageResponse(sender, incomingMessage, conversationHistory = []) {
+  async generateDirectMessageResponse(sender, incomingMessage, conversationHistory = [], activeMission = null) {
     const historyText = conversationHistory.map(m => 
-      `${m.sender_username || (m.sender_id === 1 ? 'Sabu' : sender.display_name)}: ${m.content}`
+      `${m.sender_username || (m.sender_id === 1 || m.sender_id === 6 ? 'Sabu' : sender.display_name)}: ${m.content}`
     ).join('\n');
 
-    const prompt = `
-[CONTEXT: Direct 1-on-1 Chat with ${sender.display_name || sender.username}]
-User Profession: ${sender.profession || 'Professional'}
-User Skills: ${sender.skills || 'Not specified'}
-User Bio: ${sender.bio || 'Not specified'}
+    const missionContext = activeMission ? `
+Active Business Being Researched: "${activeMission.mission_title}"
+User Directive: "${activeMission.instruction}"` : '';
 
-Conversation so far:
+    const prompt = `
+[CONTEXT: Direct 1-on-1 Conversation with ${sender.display_name || sender.username}]
+Professional Role: ${sender.profession || 'Specialist'}
+Skills: ${sender.skills || 'Not specified'}
+Bio: ${sender.bio || 'Not specified'}
+${missionContext}
+
+Conversation History so far:
 ${historyText || '(No previous messages)'}
 
-New message from ${sender.display_name || sender.username}:
+Latest message from ${sender.display_name || sender.username}:
 "${incomingMessage}"
 
-Your Task:
-Respond naturally as Sabu (15-year-old student learning business).
-- ALWAYS reply in pure, friendly, natural Malayalam script (മലയാളം ലിപിയിൽ മാത്രം സംസാരിക്കുക).
-- Even if the user types in Manglish (like "online undo", "sugamano", "njan paranjal"), ALWAYS reply in clean Malayalam script.
-- NEVER write broken Manglish or mix Tamil/Telugu words.
-- Keep the response warm, respectful ("ചേട്ടാ"), and short (1-2 sentences).
-- Output ONLY your exact chat reply.
+CRITICAL INSTRUCTIONS FOR SABU:
+1. Act like a real human student named Sabu talking on a phone.
+2. DO NOT repeat greetings (do NOT say "ഹലോ ചേട്ടാ സുഖമാണോ?" if you already greeted them in the history).
+3. If they asked you to ask details or asked what you need help with:
+   - Ask ONE concrete, practical, essential question related to their profession (${sender.profession}) and the business being planned.
+   - For Legal/Licensing: Ask about required government licenses (FSSAI, GST, Trade license), procedures, estimated fees, or timeline.
+   - For Culinary/Bakery/Product: Ask about kitchen equipment, raw material sourcing, shelf life, or cost breakdown.
+   - For Tech/Dev: Ask about the best tech stack, mobile app costs, or hosting architecture.
+   - For Marketing: Ask about customer acquisition, advertising channels, or initial budget.
+4. If they just answered your previous question:
+   - Thank them briefly and ask the next logical follow-up question.
+5. NEVER repeat a question or statement that you already sent in the conversation history!
+6. Keep your reply concise (1 to 2 sentences max) in pure, natural Malayalam script.
+7. Output ONLY your exact Malayalam reply.
 `;
 
     const response = await this.callLLM(prompt, persona.systemPrompt);
@@ -184,44 +196,51 @@ If NO, output JSON: {"should_summon": false}
   }
 
   /**
-   * Low-level caller to Groq LLM API
+   * Low-level caller to Groq LLM API with automatic multi-model fallback
    */
   async callLLM(userPrompt, systemPrompt = '') {
-    try {
-      const messages = [];
-      if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt });
-      }
-      messages.push({ role: 'user', content: userPrompt });
+    const candidateModels = [
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b'
+    ];
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          temperature: 0.7,
-          max_tokens: 300
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        console.error('Groq API Error Response:', data);
-        return 'ഹലോ ചേട്ടാ, സുഖമാണോ? നിങ്ങളുടെ മേഖലയെക്കുറിച്ച് കൂടുതൽ അറിയാൻ താല്പര്യമുണ്ട്!';
-      }
-
-      let content = data.choices?.[0]?.message?.content || '';
-      // Strip any reasoning tags if present
-      content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      return content || 'ഹലോ, സുഖമാണോ?';
-    } catch (err) {
-      console.error('Groq LLM call error:', err.message);
-      return 'ഹലോ, സുഖമാണോ? നിങ്ങളുടെ വർക്കിനെക്കുറിച്ച് കൂടുതൽ അറിയാൻ താല്പര്യമുണ്ട്!';
+    const messages = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
     }
+    messages.push({ role: 'user', content: userPrompt });
+
+    for (const model of candidateModels) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.6,
+            max_tokens: 350
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.choices?.[0]?.message?.content) {
+          let content = data.choices[0].message.content;
+          content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          if (content) return content;
+        } else {
+          console.warn(`[Brain] Model ${model} unavailable or rate-limited:`, data.error?.message || 'Empty response');
+        }
+      } catch (err) {
+        console.warn(`[Brain] Model ${model} fetch error:`, err.message);
+      }
+    }
+
+    return 'തീർച്ചയായും ചേട്ടാ, നിങ്ങളുടെ നിർദ്ദേശങ്ങൾ ശ്രദ്ധയോടെ കേൾക്കാൻ ഞാൻ തയ്യാറാണ്!';
   }
 }
 
