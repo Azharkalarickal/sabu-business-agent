@@ -1,6 +1,7 @@
 const client = require('../platform/client');
 const brain = require('./brain');
 const db = require('../database/db');
+const missionManager = require('./missionManager');
 
 class AutoBehaviorManager {
   constructor() {
@@ -22,6 +23,8 @@ class AutoBehaviorManager {
     console.log('[Agent] Initializing Sabu Autonomous Behaviors...');
 
     // 1. Listen for World Chat messages
+    missionManager.init();
+
     client.onWorldMessage(async (msg) => {
       await this.handleWorldMessage(msg);
     });
@@ -53,7 +56,10 @@ class AutoBehaviorManager {
     const myId = client.currentUser ? client.currentUser.id : 1;
     const senderId = msg.sender_id || msg.user_id;
 
-    // Bulletproof ignore own messages and other bots
+    // Check if this is a specialist summoned by Sabu via @find
+    await missionManager.handleSpecialistArrival(msg);
+
+    // Bulletproof ignore own messages and probot
     if (senderId === myId || msg.username === client.username || msg.username === 'sabu123' || msg.username === 'probot') {
       return;
     }
@@ -164,6 +170,17 @@ class AutoBehaviorManager {
     // Check for business lesson
     this.checkAndSaveLesson(
       { username: msg.sender_username, profession: msg.sender_profession },
+      msg.content
+    );
+
+    // Notify mission manager of incoming specialist DM
+    await missionManager.handleSpecialistDmReply(
+      {
+        id: msg.sender_id,
+        username: msg.sender_username,
+        display_name: msg.sender_display_name,
+        profession: msg.sender_profession
+      },
       msg.content
     );
 

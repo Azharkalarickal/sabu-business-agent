@@ -25,7 +25,18 @@
     worldInput: document.getElementById('worldInput'),
     triggerDiscoveryBtn: document.getElementById('triggerDiscoveryBtn'),
     toggleActiveBtn: document.getElementById('toggleActiveBtn'),
-    refreshFeedBtn: document.getElementById('refreshFeedBtn')
+    refreshFeedBtn: document.getElementById('refreshFeedBtn'),
+    
+    // Mission Elements
+    startMissionForm: document.getElementById('startMissionForm'),
+    missionInstructionInput: document.getElementById('missionInstructionInput'),
+    launchMissionBtn: document.getElementById('launchMissionBtn'),
+    activeMissionBox: document.getElementById('activeMissionBox'),
+    missionStatusBadge: document.getElementById('missionStatusBadge'),
+    missionTitleText: document.getElementById('missionTitleText'),
+    summonNextBtn: document.getElementById('summonNextBtn'),
+    missionTargetsChips: document.getElementById('missionTargetsChips'),
+    missionReportContent: document.getElementById('missionReportContent')
   };
 
   async function fetchStats() {
@@ -40,7 +51,7 @@
   }
 
   function renderDashboard(data) {
-    const { agent, database, activities, lessons, usersMet } = data;
+    const { agent, database, activities, lessons, usersMet, activeMission } = data;
 
     // Agent Connection Status
     if (agent.platformConnected) {
@@ -82,6 +93,9 @@
     // Toggle button text
     elements.toggleActiveBtn.textContent = agent.isActive ? '⏸️ Pause Sabu' : '▶️ Resume Sabu';
 
+    // Render Active Mission
+    renderActiveMission(activeMission);
+
     // Activities Feed
     renderActivities(activities);
 
@@ -90,6 +104,54 @@
 
     // Users Met
     renderUsers(usersMet);
+  }
+
+  function renderActiveMission(mission) {
+    if (!mission) {
+      elements.activeMissionBox.style.display = 'none';
+      return;
+    }
+
+    elements.activeMissionBox.style.display = 'flex';
+    elements.missionTitleText.textContent = mission.mission_title;
+    elements.missionStatusBadge.textContent = mission.status;
+    if (mission.status === 'COMPLETED') {
+      elements.missionStatusBadge.className = 'badge badge-accent';
+      elements.missionStatusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+      elements.missionStatusBadge.style.color = '#34d399';
+    } else {
+      elements.missionStatusBadge.className = 'badge badge-accent';
+      elements.missionStatusBadge.style.background = 'rgba(59, 130, 246, 0.2)';
+      elements.missionStatusBadge.style.color = '#60a5fa';
+    }
+
+    // Render Target Chips
+    const targets = mission.target_professions || [];
+    const consulted = (mission.consulted_specialists || []).map(s => (s.profession || '').toLowerCase());
+
+    if (targets.length === 0) {
+      elements.missionTargetsChips.innerHTML = '<span class="text-muted" style="font-size: 12px;">Planning required specialists...</span>';
+    } else {
+      elements.missionTargetsChips.innerHTML = targets.map(t => {
+        const profName = typeof t === 'string' ? t : t.profession;
+        const isConsulted = consulted.some(c => c.includes(profName.toLowerCase()) || profName.toLowerCase().includes(c));
+        const chipClass = isConsulted ? 'chip-consulted' : 'chip-queued';
+        const icon = isConsulted ? '✅' : '⏳';
+        return `
+          <div class="target-chip ${chipClass}" title="${t.question || ''}">
+            <span>${icon}</span>
+            <span>${escapeHtml(profName)}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Feasibility Report
+    if (mission.feasibility_report && mission.feasibility_report.trim()) {
+      elements.missionReportContent.textContent = mission.feasibility_report;
+    } else {
+      elements.missionReportContent.innerHTML = '<em>സാബു പ്രൊഫഷണലുകളോട് സംസാരിച്ച് വിവരങ്ങൾ ശേഖരിച്ചുകൊണ്ടിരിക്കുന്നു. റിപ്പോർട്ട് ഉടൻ ഇവിടെ കാണാം...</em>';
+    }
   }
 
   function renderActivities(activities) {
@@ -153,6 +215,46 @@
   }
 
   // Event Listeners
+  elements.startMissionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const instruction = elements.missionInstructionInput.value.trim();
+    if (!instruction) return;
+
+    elements.launchMissionBtn.disabled = true;
+    elements.launchMissionBtn.innerHTML = '<span>⏳ Planning Mission...</span>';
+
+    try {
+      const res = await fetch('/api/mission/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction })
+      });
+      if (res.ok) {
+        elements.missionInstructionInput.value = '';
+        fetchStats();
+      }
+    } catch (err) {
+      console.error('Start mission error:', err);
+    } finally {
+      elements.launchMissionBtn.disabled = false;
+      elements.launchMissionBtn.innerHTML = '<span>🚀 Launch Business Study</span>';
+    }
+  });
+
+  elements.summonNextBtn.addEventListener('click', async () => {
+    elements.summonNextBtn.disabled = true;
+    elements.summonNextBtn.textContent = 'Summoning...';
+    try {
+      await fetch('/api/mission/summon-next', { method: 'POST' });
+      fetchStats();
+    } finally {
+      setTimeout(() => {
+        elements.summonNextBtn.disabled = false;
+        elements.summonNextBtn.textContent = '🔍 Summon Next Specialist (@find)';
+      }, 4000);
+    }
+  });
+
   elements.sendWorldForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const content = elements.worldInput.value.trim();
@@ -203,4 +305,3 @@
   fetchStats();
   pollInterval = setInterval(fetchStats, 3000);
 })();
-

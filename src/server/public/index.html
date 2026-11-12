@@ -75,6 +75,57 @@
       </div>
     </section>
 
+    <!-- BUSINESS RESEARCH INSTRUCTION & MISSION HUB -->
+    <section class="card mission-hub-card">
+      <div class="card-header">
+        <div class="header-title-group">
+          <span class="hub-icon">🎯</span>
+          <div>
+            <h3>Sabu's Autonomous Business Research Hub (ബിസിനസ്സ് പഠന ദൗത്യം)</h3>
+            <p class="mission-desc">ഏതെങ്കിലും ബിസിനസ്സ് തുടങ്ങാൻ സാബുവിനോട് നിർദ്ദേശിക്കുക. സാബു വേൾഡ് ചാറ്റിൽ <code>@find &lt;profession&gt;</code> വഴി അനുയോജ്യരായ പ്രൊഫഷണലുകളെ കണ്ടെത്തി, പേഴ്സണൽ ചാറ്റ് വഴി വിവരങ്ങൾ ശേഖരിച്ച് പഠനം നടത്തും!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mission-body">
+        <form id="startMissionForm" class="mission-input-form">
+          <div class="input-with-button">
+            <input type="text" id="missionInstructionInput" placeholder="eg: കൊച്ചിയിൽ ഒരു പുതിയ Specialty Coffee Shop & Bakery തുടങ്ങാൻ എന്തൊക്കെ വേണം..." required>
+            <button type="submit" class="btn btn-primary" id="launchMissionBtn">
+              <span>🚀 Launch Business Study</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- ACTIVE MISSION DISPLAY -->
+        <div class="active-mission-box" id="activeMissionBox">
+          <div class="active-mission-header">
+            <div class="mission-title-group">
+              <span class="badge badge-accent" id="missionStatusBadge">IN PROGRESS</span>
+              <h4 id="missionTitleText">Specialty Coffee Shop & Bakery Startup</h4>
+            </div>
+            <button id="summonNextBtn" class="btn btn-sm btn-secondary">🔍 Summon Next Specialist (@find)</button>
+          </div>
+
+          <div class="mission-targets-row">
+            <span class="targets-label">Consulting Specialists:</span>
+            <div class="targets-chips" id="missionTargetsChips">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="feasibility-report-box">
+            <div class="report-header">
+              <span class="report-title">📊 Sabu's Live Feasibility & Research Report (തത്സമയ പഠന റിപ്പോർട്ട്):</span>
+            </div>
+            <div class="report-content" id="missionReportContent">
+              പ്രൊഫഷണലുകളുമായി സാബു നടത്തുന്ന ചർച്ചകളുടെ അടിസ്ഥാനത്തിൽ പഠന റിപ്പോർട്ട് ഇവിടെ തത്സമയം അപ്‌ഡേറ്റ് ചെയ്യപ്പെടും.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- MAIN TWO COLUMN STAGE -->
     <div class="dashboard-body">
       <!-- LEFT COLUMN: LIVE ACTION FEED -->

@@ -111,6 +111,20 @@ class DatabaseManager {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS sabu_business_missions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          mission_title VARCHAR(255) NOT NULL,
+          instruction TEXT NOT NULL,
+          status VARCHAR(50) DEFAULT 'IN_PROGRESS',
+          target_professions TEXT,
+          consulted_specialists TEXT,
+          feasibility_report TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
       console.log('✅ [DB] Sabu tables verified & ready.');
     } catch (e) {
       console.error('❌ [DB] Error creating tables:', e.message);
@@ -304,6 +318,82 @@ class DatabaseManager {
     let list = this.memoryStore.messages;
     if (chat_type) list = list.filter(m => m.chat_type === chat_type);
     return list.slice(0, limit);
+  }
+
+  async createMission({ mission_title, instruction, target_professions = [] }) {
+    const targetJson = JSON.stringify(target_professions);
+    if (this.isMysqlConnected) {
+      try {
+        const [result] = await this.pool.query(`
+          INSERT INTO sabu_business_missions (mission_title, instruction, status, target_professions, consulted_specialists, feasibility_report)
+          VALUES (?, ?, 'IN_PROGRESS', ?, '[]', '')
+        `, [mission_title, instruction, targetJson]);
+        return { id: result.insertId, mission_title, instruction, status: 'IN_PROGRESS', target_professions, consulted_specialists: [], feasibility_report: '' };
+      } catch (e) {
+        console.warn('DB createMission MySQL error:', e.message);
+      }
+    }
+    const mission = {
+      id: Date.now(),
+      mission_title,
+      instruction,
+      status: 'IN_PROGRESS',
+      target_professions,
+      consulted_specialists: [],
+      feasibility_report: '',
+      created_at: new Date()
+    };
+    this.memoryStore.activeMission = mission;
+    return mission;
+  }
+
+  async getActiveMission() {
+    if (this.isMysqlConnected) {
+      try {
+        const [rows] = await this.pool.query(
+          "SELECT * FROM sabu_business_missions WHERE status = 'IN_PROGRESS' ORDER BY id DESC LIMIT 1"
+        );
+        if (rows.length > 0) {
+          const row = rows[0];
+          return {
+            ...row,
+            target_professions: typeof row.target_professions === 'string' ? JSON.parse(row.target_professions || '[]') : row.target_professions,
+            consulted_specialists: typeof row.consulted_specialists === 'string' ? JSON.parse(row.consulted_specialists || '[]') : row.consulted_specialists
+          };
+        }
+        return null;
+      } catch (e) {
+        console.warn('DB getActiveMission MySQL error:', e.message);
+      }
+    }
+    return this.memoryStore.activeMission || null;
+  }
+
+  async updateMission(id, { status, target_professions, consulted_specialists, feasibility_report }) {
+    if (this.isMysqlConnected) {
+      try {
+        const fields = [];
+        const params = [];
+        if (status) { fields.push('status = ?'); params.push(status); }
+        if (target_professions) { fields.push('target_professions = ?'); params.push(JSON.stringify(target_professions)); }
+        if (consulted_specialists) { fields.push('consulted_specialists = ?'); params.push(JSON.stringify(consulted_specialists)); }
+        if (feasibility_report !== undefined) { fields.push('feasibility_report = ?'); params.push(feasibility_report); }
+        
+        if (fields.length > 0) {
+          params.push(id);
+          await this.pool.query(`UPDATE sabu_business_missions SET ${fields.join(', ')} WHERE id = ?`, params);
+        }
+        return;
+      } catch (e) {
+        console.warn('DB updateMission MySQL error:', e.message);
+      }
+    }
+    if (this.memoryStore.activeMission) {
+      if (status) this.memoryStore.activeMission.status = status;
+      if (target_professions) this.memoryStore.activeMission.target_professions = target_professions;
+      if (consulted_specialists) this.memoryStore.activeMission.consulted_specialists = consulted_specialists;
+      if (feasibility_report !== undefined) this.memoryStore.activeMission.feasibility_report = feasibility_report;
+    }
   }
 
   getStatus() {

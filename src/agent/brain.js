@@ -115,6 +115,75 @@ If NO business or professional lesson was shared, respond: {"has_lesson": false}
   }
 
   /**
+   * Plans a business mission given a user instruction
+   */
+  async planBusinessMission(instruction) {
+    try {
+      const prompt = `
+You are an expert startup advisor and business strategist assisting Sabu, a young entrepreneur.
+The user gave this instruction / business goal:
+"${instruction}"
+
+Your Task:
+1. Provide a short, catchy Malayalam / English Mission Title.
+2. Identify 3 to 4 distinct key professional roles / specialists that Sabu must consult to study and start this business (e.g. "Software Architect", "Digital Marketer", "Legal Consultant", "Bakery Chef", "Supply Chain Manager").
+3. For each role, provide 1 specific question Sabu should ask them.
+
+Respond in strict JSON format:
+{
+  "mission_title": "...",
+  "target_professions": [
+    { "profession": "...", "question": "..." },
+    { "profession": "...", "question": "..." },
+    { "profession": "...", "question": "..." }
+  ]
+}
+`;
+      const result = await this.callLLM(prompt, 'You are a business research planner. Output strict JSON only.');
+      const cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      if (parsed.mission_title && Array.isArray(parsed.target_professions)) {
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('planBusinessMission error:', e.message);
+    }
+    return {
+      mission_title: instruction.slice(0, 50),
+      target_professions: [
+        { profession: 'Business Consultant', question: 'ഈ ബിസിനസ്സ് തുടങ്ങുമ്പോൾ ഏറ്റവും കൂടുതൽ ശ്രദ്ധിക്കേണ്ട കാര്യങ്ങൾ എന്തൊക്കെയാണ്?' },
+        { profession: 'Marketing Specialist', question: 'ഇതിലേക്ക് കസ്റ്റമേഴ്സിനെ ആകർഷിക്കാൻ ഏറ്റവും അനുയോജ്യമായ മാർക്കറ്റിംഗ് സ്ട്രാറ്റജി എന്താണ്?' },
+        { profession: 'Financial Advisor', question: 'തുടക്കത്തിൽ വേണ്ടിവരുന്ന ഏകദേശ ബഡ്ജറ്റും ചിലവുകളും എങ്ങനെ കണക്കാക്കാം?' }
+      ]
+    };
+  }
+
+  /**
+   * Analyzes specialist conversation to see if they recommended another professional or domain
+   */
+  async identifyNextSpecialist(conversationText) {
+    try {
+      const prompt = `
+Analyze this conversation with a professional:
+"${conversationText}"
+
+Did this professional suggest consulting or connecting with another specific type of professional, expert, or partner (e.g. "you must speak to a lawyer for license", "consult a packaging supplier", "hire a devops engineer")?
+If YES, output JSON: {"should_summon": true, "profession": "Exact Profession Name", "reason": "why they are needed"}
+If NO, output JSON: {"should_summon": false}
+`;
+      const result = await this.callLLM(prompt, 'Output strict JSON only.');
+      const cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      if (parsed.should_summon && parsed.profession) {
+        return parsed;
+      }
+    } catch (e) {
+      // Ignored
+    }
+    return null;
+  }
+
+  /**
    * Low-level caller to Groq LLM API
    */
   async callLLM(userPrompt, systemPrompt = '') {

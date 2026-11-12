@@ -5,6 +5,7 @@ const db = require('../database/db');
 const client = require('../platform/client');
 const autoBehavior = require('../agent/autoBehavior');
 const brain = require('../agent/brain');
+const missionManager = require('../agent/missionManager');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
         onlineUsersCount: client.onlineUserIds.size,
         ...agentStats
       },
+      activeMission: missionManager.getActiveMission(),
       database: dbStatus,
       activities,
       lessons,
@@ -58,6 +60,28 @@ app.post('/api/actions/discover', async (req, res) => {
   try {
     await autoBehavior.discoverProfessionals();
     res.json({ success: true, message: 'Discovery scan triggered successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Start a new business mission directive
+app.post('/api/mission/start', async (req, res) => {
+  try {
+    const { instruction } = req.body;
+    if (!instruction) return res.status(400).json({ error: 'Instruction is required' });
+    const mission = await missionManager.startMission(instruction);
+    res.json({ success: true, mission });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Manually trigger summoning the next profession for the active mission
+app.post('/api/mission/summon-next', async (req, res) => {
+  try {
+    await missionManager.summonNextProfession();
+    res.json({ success: true, message: 'Summoned next profession in World Chat' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

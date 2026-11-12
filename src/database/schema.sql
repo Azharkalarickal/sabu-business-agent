@@ -35,9 +35,21 @@ CREATE TABLE IF NOT EXISTS sabu_business_lessons (
 
 CREATE TABLE IF NOT EXISTS sabu_activity_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  event_type VARCHAR(50) NOT NULL, -- 'WORLD_CHAT', 'DIRECT_CHAT', 'INSIGHT', 'DISCOVERY', 'SYSTEM'
+  event_type VARCHAR(50) NOT NULL, -- 'WORLD_CHAT', 'DIRECT_CHAT', 'INSIGHT', 'DISCOVERY', 'SYSTEM', 'MISSION'
   action TEXT NOT NULL,
   details TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sabu_business_missions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  mission_title VARCHAR(255) NOT NULL,
+  instruction TEXT NOT NULL,
+  status VARCHAR(50) DEFAULT 'IN_PROGRESS', -- 'IN_PROGRESS', 'COMPLETED', 'PAUSED'
+  target_professions TEXT, -- JSON array of professions to consult
+  consulted_specialists TEXT, -- JSON array of specialists talked to
+  feasibility_report TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
