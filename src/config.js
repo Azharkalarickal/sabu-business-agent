@@ -12,7 +12,7 @@ module.exports = {
     groqModel: process.env.GROQ_MODEL || 'qwen/qwen3.8-27b',
   },
   db: {
-    host: process.env.DB_HOST || 'darkslategrey-chamois-621012.hostingersite.com',
+    host: process.env.DB_HOST || 'srv932.hstgr.io',
     port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'u918480384_chatbot',
     password: process.env.DB_PASSWORD || 'New@82818888',

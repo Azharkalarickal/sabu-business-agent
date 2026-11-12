@@ -33,6 +33,11 @@ class ProChatPlatformClient {
 
       const data = await res.json();
       if (!res.ok) {
+        // If login failed because account was wiped on Render redeploy, auto-register
+        if (data.error && data.error.includes('Invalid')) {
+          console.log('[Platform] Account not found, auto-registering sabu123...');
+          return await this.register();
+        }
         throw new Error(data.error || 'Login failed');
       }
 
@@ -45,6 +50,33 @@ class ProChatPlatformClient {
       console.error('❌ [Platform] Login error:', err.message);
       this.notifyStatusChange('LOGIN_ERROR');
       throw err;
+    }
+  }
+
+  async register() {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: this.username,
+          password: this.password,
+          display_name: 'Sabu',
+          profession: '10th student',
+          skills: 'high learning skill, business research',
+          bio: 'i like study new kowloges and , am highly like to reserch in new business and implimeting them , so am join here for connecting profetionals'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Register failed');
+      this.token = data.token;
+      this.currentUser = data.user;
+      console.log(`✅ [Platform] Auto-registered and logged in as "${this.currentUser.display_name}" (ID: ${this.currentUser.id})`);
+      this.notifyStatusChange('LOGGED_IN');
+      return data;
+    } catch (e) {
+      console.error('Auto-register error:', e.message);
+      throw e;
     }
   }
 
