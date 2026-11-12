@@ -53,8 +53,8 @@ class AutoBehaviorManager {
     const myId = client.currentUser ? client.currentUser.id : 1;
     const senderId = msg.sender_id || msg.user_id;
 
-    // Bulletproof ignore own messages
-    if (senderId === myId || msg.username === client.username || msg.username === 'sabu123') {
+    // Bulletproof ignore own messages and other bots
+    if (senderId === myId || msg.username === client.username || msg.username === 'sabu123' || msg.username === 'probot') {
       return;
     }
 
@@ -83,10 +83,17 @@ class AutoBehaviorManager {
 
     // Check if Sabu should reply
     const text = (msg.content || '').toLowerCase();
-    const isMentioned = text.includes('sabu') || text.includes('സാബു') || text.includes('123');
+    const isMentioned = text.includes('sabu') || text.includes('സാബു') || text.includes('123') || text.includes('@sabu');
+    
+    // Check if message has questions, greetings or business/general talk
+    const isGreeting = text.includes('hi') || text.includes('hello') || text.includes('hey') || 
+                       text.includes('ഹലോ') || text.includes('ഹായ്') || text.includes('ivide') || 
+                       text.includes('aarum') || text.includes('undo') || text.includes('sugham');
+                       
     const isTopicOfInterest = text.includes('business') || text.includes('start') || text.includes('job') ||
                               text.includes('career') || text.includes('work') || text.includes('tech') ||
-                              text.includes('ai') || text.includes('money') || text.includes('company');
+                              text.includes('ai') || text.includes('money') || text.includes('company') ||
+                              text.includes('?') || isGreeting;
 
     const now = Date.now();
     const canReply = isMentioned || (isTopicOfInterest && (now - this.worldChatCooldown > this.worldChatCooldownMs));
